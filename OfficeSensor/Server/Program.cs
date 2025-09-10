@@ -20,10 +20,13 @@ namespace Server
             catch (Exception ex)
             {
                 Console.WriteLine($"Greska pri pokretanju servisa: {ex.Message}");
+                Console.WriteLine("Pritisnite bilo koji taster za zatvaranje...");
+                Console.ReadKey();
             }
             finally
             {
-                host?.Close();
+                if (host?.State == CommunicationState.Opened)
+                    host.Close();
             }
         }
     }
