@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Common;
+using System.ServiceModel;
 
 namespace Server
 {
@@ -10,6 +8,23 @@ namespace Server
     {
         static void Main(string[] args)
         {
+            ServiceHost host = new ServiceHost(typeof(SensorService));
+
+            try
+            {
+                host.Open();
+                Console.WriteLine("WCF Servis pokrenut na net.tcp://localhost:4000/SensorService");
+                Console.WriteLine("Pritisnite bilo koji taster za zatvaranje servisa...");
+                Console.ReadKey();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Greska pri pokretanju servisa: {ex.Message}");
+            }
+            finally
+            {
+                host?.Close();
+            }
         }
     }
 }
