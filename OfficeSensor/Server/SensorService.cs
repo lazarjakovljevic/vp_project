@@ -1,11 +1,7 @@
 ﻿using Common;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.ServiceModel;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Server
 {
@@ -56,7 +52,78 @@ namespace Server
 
         public ServiceResponse PushSample(SensorSample sample)
         {
-            throw new NotImplementedException();
+            if (!sessionActive || sessionWriter == null)
+            {
+                return new ServiceResponse
+                {
+                    Type = ResponseType.NACK,
+                    Status = ResponseStatus.COMPLETED,
+                    Message = "Sesija nije aktivna"
+                };
+            }
+
+            try
+            {
+                // ZADATAK 3: Kompletna validacija podataka
+                string validationError = ValidateSample(sample);
+                if (!string.IsNullOrEmpty(validationError))
+                {
+                    rejectsWriter.WriteLine($"{sample.Volume},{sample.RelativeHumidity},{sample.AirQuality},{sample.LightLevel},{sample.DateTime},{validationError}");
+                    rejectsWriter.Flush();
+
+                    return new ServiceResponse
+                    {
+                        Type = ResponseType.NACK,
+                        Status = ResponseStatus.IN_PROGRESS,
+                        Message = $"Uzorak odbacen: {validationError}"
+                    };
+                }
+
+                sessionWriter.WriteLine($"{sample.Volume},{sample.RelativeHumidity},{sample.AirQuality},{sample.LightLevel},{sample.DateTime}");
+                sessionWriter.Flush();
+
+                Console.WriteLine("Prenos u toku...");
+
+                return new ServiceResponse
+                {
+                    Type = ResponseType.ACK,
+                    Status = ResponseStatus.IN_PROGRESS,
+                    Message = "Uzorak uspesno primljen"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResponse
+                {
+                    Type = ResponseType.NACK,
+                    Status = ResponseStatus.IN_PROGRESS,
+                    Message = $"Greska pri obradi uzorka: {ex.Message}"
+                };
+            }
+        }
+
+        // ZADATAK 3: Validacija svih tipova/jedinica, postojanje obaveznih polja, dozvoljeni opsezi (proveriti dodatno)
+        private string ValidateSample(SensorSample sample)
+        {
+            if (sample == null)
+                return "Uzorak je prazan";
+
+            if (sample.Volume < 0 || sample.Volume > 1000)
+                return "Volume van dozvoljenog opsega (0-1000 mV)";
+
+            if (sample.LightLevel < 100 || sample.LightLevel > 50000000)
+                return "LightLevel van dozvoljenog opsega";
+
+            if (sample.RelativeHumidity <= 0 || sample.RelativeHumidity > 100)
+                return "RelativeHumidity van dozvoljenog opsega (0-100%)";
+
+            if (sample.AirQuality < 10000 || sample.AirQuality > 100000)
+                return "AirQuality van dozvoljenog opsega";
+
+            if (sample.DateTime == default)
+                return "DateTime nije postavljen";
+
+            return null;
         }
 
         public ServiceResponse EndSession()
@@ -67,7 +134,6 @@ namespace Server
                 rejectsWriter?.Close();
                 sessionActive = false;
 
-                // ZADATAK 7: Status "zavrsen prenos"
                 Console.WriteLine("Zavrsen prenos");
 
                 return new ServiceResponse
