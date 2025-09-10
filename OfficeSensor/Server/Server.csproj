@@ -4,10 +4,10 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{E9117498-9144-4103-BB07-793789B104D7}</ProjectGuid>
+    <ProjectGuid>{FE53F89E-5D6B-4845-872F-82D4F91EC45A}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>OfficeSensor</RootNamespace>
-    <AssemblyName>OfficeSensor</AssemblyName>
+    <RootNamespace>Server</RootNamespace>
+    <AssemblyName>Server</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>

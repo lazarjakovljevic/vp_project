@@ -1,9 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36301.6 d17.14
+VisualStudioVersion = 17.14.36301.6
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfficeSensor", "OfficeSensor\OfficeSensor.csproj", "{E9117498-9144-4103-BB07-793789B104D7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{59A4584E-F76F-450E-B7FB-277012F300A3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server", "Server\Server.csproj", "{FE53F89E-5D6B-4845-872F-82D4F91EC45A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +19,14 @@ Global
 		{E9117498-9144-4103-BB07-793789B104D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E9117498-9144-4103-BB07-793789B104D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E9117498-9144-4103-BB07-793789B104D7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{59A4584E-F76F-450E-B7FB-277012F300A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59A4584E-F76F-450E-B7FB-277012F300A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59A4584E-F76F-450E-B7FB-277012F300A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59A4584E-F76F-450E-B7FB-277012F300A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE53F89E-5D6B-4845-872F-82D4F91EC45A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE53F89E-5D6B-4845-872F-82D4F91EC45A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE53F89E-5D6B-4845-872F-82D4F91EC45A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE53F89E-5D6B-4845-872F-82D4F91EC45A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
