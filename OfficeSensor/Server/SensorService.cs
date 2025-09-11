@@ -72,12 +72,12 @@ namespace Server
 
             try
             {
+                Console.WriteLine("Prenos u toku...");
+
                 ValidateSampleOrThrow(sample);
 
                 sessionWriter.WriteLine($"{sample.Volume},{sample.RelativeHumidity},{sample.AirQuality},{sample.LightLevel},{sample.DateTime}");
-                sessionWriter.Flush();
-
-                Console.WriteLine("Prenos u toku...");
+                sessionWriter.Flush();              
 
                 return new ServiceResponse
                 {
@@ -221,15 +221,15 @@ namespace Server
         {
             if (!disposed)
             {
-                //Console.WriteLine("=== DISPOSE POZVAN ===");
+                Console.WriteLine("=== DISPOSE POZVAN ===");
                 if (disposing)
                 {
-                    //Console.WriteLine("Zatvaram StreamWriter resurse...");
+                    Console.WriteLine("Zatvaram StreamWriter resurse...");
                     sessionWriter?.Close();
                     sessionWriter?.Dispose();
                     rejectsWriter?.Close();
                     rejectsWriter?.Dispose();
-                    //Console.WriteLine("Resursi uspesno zatvoreni");
+                    Console.WriteLine("Resursi uspesno zatvoreni");
                 }
                 disposed = true;
             }

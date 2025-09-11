@@ -120,7 +120,7 @@ namespace Client
                                 rejectCount++;
                             }
 
-                            System.Threading.Thread.Sleep(100);
+                            System.Threading.Thread.Sleep(50);
                         }
 
                         Console.WriteLine("\n=== Zatvaranje sesije ===");
@@ -148,7 +148,7 @@ namespace Client
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Neocekivana greška: {ex.Message}");
+                Console.WriteLine($"\nNeocekivana greska: {ex.Message}"); // ako se prekine konecika sa serverom (testiramo)
             }
 
             Console.WriteLine("\nPritisnite bilo koji taster za zatvaranje...");

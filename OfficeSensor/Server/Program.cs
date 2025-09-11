@@ -6,9 +6,18 @@ namespace Server
 {
     public class Program
     {
+        private static SensorService service;
+
         static void Main(string[] args)
         {
             ServiceHost host = new ServiceHost(typeof(SensorService));
+
+            service = new SensorService();
+
+            Console.CancelKeyPress += (sender, e) => {
+                Console.WriteLine("\nGasim server...");
+                service?.Dispose(); 
+            };
 
             try
             {
