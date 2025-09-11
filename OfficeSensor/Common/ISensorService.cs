@@ -11,9 +11,13 @@ namespace Common
     public interface ISensorService
     {
         [OperationContract]
+        [FaultContract(typeof(ValidationFault))]
+        [FaultContract(typeof(DataFormatFault))]
         ServiceResponse StartSession(SessionMetadata metadata);
 
         [OperationContract]
+        [FaultContract(typeof(ValidationFault))]
+        [FaultContract(typeof(DataFormatFault))]
         ServiceResponse PushSample(SensorSample sample);
 
         [OperationContract]
