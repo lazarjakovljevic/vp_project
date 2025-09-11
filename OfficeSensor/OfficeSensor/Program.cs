@@ -13,6 +13,7 @@ namespace Client
     {
         static void Main(string[] args)
         {
+
             string csvPath = ConfigurationManager.AppSettings["csvPath"] ?? "dataset.csv";
             int maxRows = int.Parse(ConfigurationManager.AppSettings["maxRows"] ?? "100");
 

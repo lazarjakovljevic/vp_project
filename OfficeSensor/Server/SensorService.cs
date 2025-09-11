@@ -7,13 +7,14 @@ using Common;
 namespace Server
 {
     [ServiceBehavior(InstanceContextMode = InstanceContextMode.Single)]
-    public class SensorService : ISensorService
+    public class SensorService : ISensorService, IDisposable
     {
         private string currentSessionFile;
         private string rejectsFile;
         private StreamWriter sessionWriter;
         private StreamWriter rejectsWriter;
         private bool sessionActive = false;
+        private bool disposed = false;
 
         public ServiceResponse StartSession(SessionMetadata metadata)
         {
@@ -208,6 +209,35 @@ namespace Server
             {
                 // Ignorisemo logging erorr-e kako bi se ispisao pravi izuzetak korisniku
             }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                //Console.WriteLine("=== DISPOSE POZVAN ===");
+                if (disposing)
+                {
+                    //Console.WriteLine("Zatvaram StreamWriter resurse...");
+                    sessionWriter?.Close();
+                    sessionWriter?.Dispose();
+                    rejectsWriter?.Close();
+                    rejectsWriter?.Dispose();
+                    //Console.WriteLine("Resursi uspesno zatvoreni");
+                }
+                disposed = true;
+            }
+        }
+
+        ~SensorService()
+        {
+            Dispose(false);
         }
     }
 }
