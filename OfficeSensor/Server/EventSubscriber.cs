@@ -23,10 +23,12 @@ namespace Server
 
         private void OnTransferStarted(object sender, TransferEventArgs e)
         {
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
             Console.WriteLine("=== DOGADJAJ: Transfer pokrenut ===");
             Console.WriteLine($"Poruka: {e.Message}");
             Console.WriteLine($"Sesija: {e.SessionId}");
             Console.WriteLine($"Vreme: {e.Timestamp:HH:mm:ss}");
+            Console.ResetColor();
             Console.WriteLine();
         }
 
@@ -45,10 +47,12 @@ namespace Server
 
         private void OnTransferCompleted(object sender, TransferEventArgs e)
         {
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
             Console.WriteLine("=== DOGADJAJ: Transfer zavrsen ===");
             Console.WriteLine($"Poruka: {e.Message}");
             Console.WriteLine($"Sesija: {e.SessionId}");
             Console.WriteLine($"Vreme: {e.Timestamp:HH:mm:ss}");
+            Console.ResetColor();
             Console.WriteLine();
         }
 
