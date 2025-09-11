@@ -1,7 +1,8 @@
-﻿using Common;
-using System;
+﻿using System;
+using System.Globalization;
 using System.IO;
 using System.ServiceModel;
+using Common;
 
 namespace Server
 {
@@ -18,7 +19,6 @@ namespace Server
         {
             try
             {
-                // ZADATAK 6: Kreiranje measurements_session.csv strukture
                 string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                 currentSessionFile = $"measurements_{timestamp}.csv";
                 rejectsFile = $"rejects_{timestamp}.csv";
@@ -41,12 +41,15 @@ namespace Server
             }
             catch (Exception ex)
             {
-                return new ServiceResponse
-                {
-                    Type = ResponseType.NACK,
-                    Status = ResponseStatus.COMPLETED,
-                    Message = $"Greska pri pokretanju sesije: {ex.Message}"
-                };
+                throw new FaultException<DataFormatFault>(
+                    new DataFormatFault
+                    {
+                        Message = "Greska pri pokretanju sesije",
+                        Details = ex.Message,
+                        FieldName = "Session"
+                    },
+                    new FaultReason("Greska pri pokretanju sesije")
+                );
             }
         }
 
@@ -54,25 +57,25 @@ namespace Server
         {
             if (!sessionActive || sessionWriter == null)
             {
-                throw new FaultException<ValidationFault>(new ValidationFault
-                {
-                    Message = "Sesija nije aktivna",
-                    FieldName = "Session",
-                    InvalidValue = sessionActive,
-                    ExpectedRange = "Aktivna sesija"
-                });
+                throw new FaultException<ValidationFault>(
+                    new ValidationFault
+                    {
+                        Message = "Sesija nije aktivna",
+                        FieldName = "Session",
+                        InvalidValue = sessionActive,
+                        ExpectedRange = "Aktivna sesija"
+                    },
+                    new FaultReason("Sesija nije aktivna")
+                );
             }
 
             try
             {
-                // ZADATAK 3: Kompletna validacija podataka sa FaultException-ima
                 ValidateSampleOrThrow(sample);
 
-                // ZADATAK 6: Upis validnog uzorka
                 sessionWriter.WriteLine($"{sample.Volume},{sample.RelativeHumidity},{sample.AirQuality},{sample.LightLevel},{sample.DateTime}");
                 sessionWriter.Flush();
 
-                // ZADATAK 7: Status "prenos u toku..."
                 Console.WriteLine("Prenos u toku...");
 
                 return new ServiceResponse
@@ -88,109 +91,15 @@ namespace Server
             }
             catch (Exception ex)
             {
-                throw new FaultException<DataFormatFault>(new DataFormatFault
-                {
-                    Message = "Greska pri obradi uzorka",
-                    Details = ex.Message,
-                    FieldName = "Sample"
-                });
-            }
-        }
-
-        // ZADATAK 3: Validacija sa FaultException-ima
-        private void ValidateSampleOrThrow(SensorSample sample)
-        {
-            if (sample == null)
-            {
-                throw new FaultException<DataFormatFault>(new DataFormatFault
-                {
-                    Message = "Uzorak je prazan",
-                    Details = "SensorSample objekat je null",
-                    FieldName = "Sample"
-                });
-            }
-
-            if (sample.Volume < 0 || sample.Volume > 1000)
-            {
-                LogRejectedSample(sample, "Volume van dozvoljenog opsega");
-                throw new FaultException<ValidationFault>(new ValidationFault
-                {
-                    Message = "Volume van dozvoljenog opsega",
-                    FieldName = "Volume",
-                    InvalidValue = sample.Volume,
-                    ExpectedRange = "0-1000 mV"
-                });
-            }
-
-            if (sample.RelativeHumidity <= 0 || sample.RelativeHumidity > 100)
-            {
-                LogRejectedSample(sample, "RelativeHumidity van dozvoljenog opsega");
-                throw new FaultException<ValidationFault>(new ValidationFault
-                {
-                    Message = "RelativeHumidity van dozvoljenog opsega",
-                    FieldName = "RelativeHumidity",
-                    InvalidValue = sample.RelativeHumidity,
-                    ExpectedRange = "0-100%"
-                });
-            }
-
-            if (sample.AirQuality < 0 || sample.AirQuality > 100000)
-            {
-                LogRejectedSample(sample, "AirQuality van dozvoljenog opsega");
-                throw new FaultException<ValidationFault>(new ValidationFault
-                {
-                    Message = "AirQuality van dozvoljenog opsega",
-                    FieldName = "AirQuality",
-                    InvalidValue = sample.AirQuality,
-                    ExpectedRange = "0-100000 Ohms"
-                });
-            }
-
-            if (sample.LightLevel < 0 || sample.LightLevel > 50000000)
-            {
-                LogRejectedSample(sample, "LightLevel van dozvoljenog opsega");
-                throw new FaultException<ValidationFault>(new ValidationFault
-                {
-                    Message = "LightLevel van dozvoljenog opsega",
-                    FieldName = "LightLevel",
-                    InvalidValue = sample.LightLevel,
-                    ExpectedRange = "0-50000000 Ohms"
-                });
-            }
-
-            if (sample.DateTime == default)
-            {
-                LogRejectedSample(sample, "DateTime nije postavljen");
-                throw new FaultException<DataFormatFault>(new DataFormatFault
-                {
-                    Message = "DateTime nije postavljen",
-                    Details = "DateTime ima default vrednost",
-                    FieldName = "DateTime"
-                });
-            }
-
-            if (double.IsNaN(sample.Volume) || double.IsInfinity(sample.Volume))
-            {
-                LogRejectedSample(sample, "Volume nije validna numerička vrednost");
-                throw new FaultException<DataFormatFault>(new DataFormatFault
-                {
-                    Message = "Volume nije validna numerička vrednost",
-                    Details = "Vrednost je NaN ili Infinity",
-                    FieldName = "Volume"
-                });
-            }
-        }
-
-        private void LogRejectedSample(SensorSample sample, string reason)
-        {
-            try
-            {
-                rejectsWriter?.WriteLine($"{sample?.Volume},{sample?.RelativeHumidity},{sample?.AirQuality},{sample?.LightLevel},{sample?.DateTime},{reason}");
-                rejectsWriter?.Flush();
-            }
-            catch
-            {
-                // Ignorisemo logging error-e da ne bi prekinuli tok funkcije, i da se ne bi ispisao pogresan exception
+                throw new FaultException<DataFormatFault>(
+                    new DataFormatFault
+                    {
+                        Message = "Greska pri obradi uzorka",
+                        Details = ex.Message,
+                        FieldName = "Sample"
+                    },
+                    new FaultReason("Greska pri obradi uzorka")
+                );
             }
         }
 
@@ -219,6 +128,85 @@ namespace Server
                     Status = ResponseStatus.COMPLETED,
                     Message = $"Greska pri zatvaranju sesije: {ex.Message}"
                 };
+            }
+        }
+
+        private void ValidateSampleOrThrow(SensorSample sample)
+        {
+            if (sample == null)
+            {
+                ThrowDataFormatFault("Uzorak je prazan", "Sample", "SensorSample objekat je null");
+            }
+
+            if (sample.Volume < 0 || sample.Volume > 1000)
+            {
+                ThrowValidationFault("Volume van dozvoljenog opsega", "Volume", sample.Volume, "0-1000 mV", sample);
+            }
+
+            if (sample.LightLevel < 100 || sample.LightLevel > 50000000)
+            {
+                ThrowValidationFault("LightLevel van dozvoljenog opsega", "LightLevel", sample.LightLevel, "100-50000000 Ohms", sample);
+            }
+
+            if (sample.RelativeHumidity <= 0 || sample.RelativeHumidity > 30)
+            {
+                ThrowValidationFault("RelativeHumidity van dozvoljenog opsega", "RelativeHumidity", sample.RelativeHumidity, "0-30%", sample);
+            }
+
+            if (sample.AirQuality < 10000 || sample.AirQuality > 100000)
+            {
+                ThrowValidationFault("AirQuality van dozvoljenog opsega", "AirQuality", sample.AirQuality, "10000-100000 Ohms", sample);
+            }
+
+            if (sample.DateTime == default)
+            {
+                ThrowDataFormatFault("DateTime nije postavljen", "DateTime", "DateTime ima default vrednost");
+            }
+
+            if (double.IsNaN(sample.Volume) || double.IsInfinity(sample.Volume))
+            {
+                ThrowDataFormatFault("Volume nije validna numericka vrednost", "Volume", "Vrednost je NaN ili Infinity");
+            }
+        }
+
+        private void ThrowValidationFault(string message, string fieldName, object invalidValue, string expectedRange, SensorSample sample)
+        {
+            LogRejectedSample(sample, message);
+            throw new FaultException<ValidationFault>(
+                new ValidationFault
+                {
+                    Message = message,
+                    FieldName = fieldName,
+                    InvalidValue = invalidValue,
+                    ExpectedRange = expectedRange
+                },
+                new FaultReason($"Greska validacije: {message}")
+            );
+        }
+
+        private void ThrowDataFormatFault(string message, string fieldName, string details)
+        {
+            throw new FaultException<DataFormatFault>(
+                new DataFormatFault
+                {
+                    Message = message,
+                    FieldName = fieldName,
+                    Details = details
+                },
+                new FaultReason($"Greska formata: {message}")
+            );
+        }
+
+        private void LogRejectedSample(SensorSample sample, string reason)
+        {
+            try
+            {
+                rejectsWriter?.WriteLine($"{sample?.Volume.ToString(CultureInfo.InvariantCulture)},{sample?.RelativeHumidity.ToString(CultureInfo.InvariantCulture)},{sample?.AirQuality.ToString(CultureInfo.InvariantCulture)},{sample?.LightLevel.ToString(CultureInfo.InvariantCulture)},{sample?.DateTime.ToString("yyyy-MM-dd HH:mm:ss")},{reason}");
+                rejectsWriter?.Flush();
+            }
+            catch
+            {
+                // Ignorisemo logging erorr-e kako bi se ispisao pravi izuzetak korisniku
             }
         }
     }

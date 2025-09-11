@@ -32,7 +32,6 @@ namespace Client
                         return;
                     }
 
-                    // WCF klijent konfiguracija
                     var factory = new ChannelFactory<ISensorService>("SensorService");
                     var client = factory.CreateChannel();
 
@@ -48,39 +47,90 @@ namespace Client
                         };
 
                         Console.WriteLine("\n=== Pokretanje sesije ===");
-                        var startResponse = client.StartSession(metadata);
-                        Console.WriteLine($"StartSession: {startResponse.Message}");
 
-                        if (startResponse.Type == ResponseType.NACK)
+                        try
                         {
-                            Console.WriteLine("Greska pri pokretanju sesije!");
+                            var startResponse = client.StartSession(metadata);
+                            Console.WriteLine($"StartSession: {startResponse.Message}");
+
+                            if (startResponse.Type == ResponseType.NACK)
+                            {
+                                Console.WriteLine("Greska pri pokretanju sesije!");
+                                return;
+                            }
+                        }
+                        catch (FaultException<ValidationFault> ex)
+                        {
+                            Console.WriteLine($"Validacijska greska pri pokretanju: {ex.Detail.Message}");
+                            Console.WriteLine($"Polje: {ex.Detail.FieldName}, Vrednost: {ex.Detail.InvalidValue}");
+                            return;
+                        }
+                        catch (FaultException<DataFormatFault> ex)
+                        {
+                            Console.WriteLine($"Format greška pri pokretanju: {ex.Detail.Message}");
+                            Console.WriteLine($"Detalji: {ex.Detail.Details}");
                             return;
                         }
 
-                        Console.WriteLine("\n===== Slanje uzoraka =====");
+
+                        Console.WriteLine("\n=== Slanje uzoraka ===");
+                        int successCount = 0;
+                        int rejectCount = 0;
+
                         for (int i = 0; i < samples.Count; i++)
                         {
                             var sample = samples[i];
 
                             Console.WriteLine($"Saljem uzorak {i + 1}/{samples.Count}: {sample.DateTime}");
 
-                            var pushResponse = client.PushSample(sample);
+                            try
+                            {
+                                var pushResponse = client.PushSample(sample);
 
-                            if (pushResponse.Type == ResponseType.ACK)
-                            {
-                                Console.WriteLine($"  + {pushResponse.Message}");
+                                if (pushResponse.Type == ResponseType.ACK)
+                                {
+                                    Console.WriteLine($"   {pushResponse.Message}");
+                                    successCount++;
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"   {pushResponse.Message}");
+                                    rejectCount++;
+                                }
                             }
-                            else
+                            catch (FaultException<ValidationFault> ex)
                             {
-                                Console.WriteLine($"  x {pushResponse.Message}");
+                                Console.WriteLine($"    Validacijska greska: {ex.Detail.Message}");
+                                Console.WriteLine($"    Polje: {ex.Detail.FieldName}");
+                                Console.WriteLine($"    Vrednost: {ex.Detail.InvalidValue}");
+                                Console.WriteLine($"    Ocekivani opseg: {ex.Detail.ExpectedRange}");
+                                rejectCount++;
+                            }
+                            catch (FaultException<DataFormatFault> ex)
+                            {
+                                Console.WriteLine($"    Format greska: {ex.Detail.Message}");
+                                Console.WriteLine($"    Polje: {ex.Detail.FieldName}");
+                                Console.WriteLine($"    Detalji: {ex.Detail.Details}");
+                                rejectCount++;
+                            }
+                            catch (FaultException ex)
+                            {
+                                Console.WriteLine($"    Neocekivana WCF greska: {ex.Message}");
+                                rejectCount++;
                             }
 
                             System.Threading.Thread.Sleep(100);
                         }
 
-                        Console.WriteLine("\n===== Zatvaranje sesije =====");
+                        Console.WriteLine("\n=== Zatvaranje sesije ===");
                         var endResponse = client.EndSession();
                         Console.WriteLine($"EndSession: {endResponse.Message}");
+
+
+                        Console.WriteLine($"\n=== STATISTIKE ===");
+                        Console.WriteLine($"Uspesno poslato: {successCount}");
+                        Console.WriteLine($"Odbaceno: {rejectCount}");
+                        Console.WriteLine($"Ukupno: {samples.Count}");
                     }
                     finally
                     {
@@ -97,12 +147,11 @@ namespace Client
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Greska: {ex.Message}");
+                Console.WriteLine($"Neocekivana greška: {ex.Message}");
             }
 
             Console.WriteLine("\nPritisnite bilo koji taster za zatvaranje...");
             Console.ReadKey();
-
         }
     }
 }
