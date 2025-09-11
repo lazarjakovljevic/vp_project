@@ -16,6 +16,29 @@ namespace Server
         private bool sessionActive = false;
         private bool disposed = false;
 
+        private SensorSample previousSample = null;
+        private double lightLevelSum = 0;
+        private double relativeHumiditySum = 0;
+        private double airQualitySum = 0;
+        private int analyticsCount = 0;
+
+        public delegate void TransferEventHandler(object sender, TransferEventArgs e);
+        public delegate void SampleReceivedEventHandler(object sender, SampleReceivedEventArgs e);
+        public delegate void WarningEventHandler(object sender, WarningEventArgs e);
+        public delegate void SpikeEventHandler(object sender, SpikeEventArgs e);
+        public delegate void OutOfBandEventHandler(object sender, OutOfBandEventArgs e);
+
+        public event TransferEventHandler OnTransferStarted;
+        public event SampleReceivedEventHandler OnSampleReceived;
+        public event TransferEventHandler OnTransferCompleted;
+        public event WarningEventHandler OnWarningRaised;
+        public event SpikeEventHandler OnLightLevelSpike;
+        public event SpikeEventHandler OnRelativeHumiditySpike;
+        public event SpikeEventHandler OnAirQualitySpike;
+        public event OutOfBandEventHandler OnOutOfBandWarning;
+
+        private int sampleCount = 0;
+
         public ServiceResponse StartSession(SessionMetadata metadata)
         {
             try
@@ -31,7 +54,7 @@ namespace Server
                 rejectsWriter.WriteLine("Volume,RelativeHumidity,AirQuality,LightLevel,DateTime,RejectReason");
 
                 sessionActive = true;
-                Console.WriteLine($"Sesija pokrenuta: {currentSessionFile}");
+                RaiseTransferStarted("Sesija pokrenuta", currentSessionFile);
 
                 return new ServiceResponse
                 {
@@ -72,12 +95,16 @@ namespace Server
 
             try
             {
-                Console.WriteLine("Prenos u toku...");
-
                 ValidateSampleOrThrow(sample);
 
+                Console.WriteLine("Prenos u toku...");
+
                 sessionWriter.WriteLine($"{sample.Volume},{sample.RelativeHumidity},{sample.AirQuality},{sample.LightLevel},{sample.DateTime}");
-                sessionWriter.Flush();              
+                sessionWriter.Flush();
+
+                sampleCount++;
+                RaiseSampleReceived(sample, sampleCount);
+                PerformAnalytics(sample);
 
                 return new ServiceResponse
                 {
@@ -112,7 +139,7 @@ namespace Server
                 rejectsWriter?.Close();
                 sessionActive = false;
 
-                Console.WriteLine("Zavrsen prenos");
+                RaiseTransferCompleted("Sesija zavrsena", currentSessionFile);
 
                 return new ServiceResponse
                 {
@@ -207,7 +234,7 @@ namespace Server
             }
             catch
             {
-                // Ignorisemo logging erorr-e kako bi se ispisao pravi izuzetak korisniku
+                // ignorisemo logging erorr-e kako bi se ispisao pravi izuzetak korisniku
             }
         }
 
@@ -238,6 +265,154 @@ namespace Server
         ~SensorService()
         {
             Dispose(false);
+        }
+
+        protected virtual void RaiseTransferStarted(string message, string sessionId = null)
+        {
+            if (OnTransferStarted != null)
+            {
+                var args = new TransferEventArgs(message, sessionId);
+                OnTransferStarted(this, args);
+            }
+        }
+
+        protected virtual void RaiseSampleReceived(SensorSample sample, int count)
+        {
+            if (OnSampleReceived != null)
+            {
+                var args = new SampleReceivedEventArgs(sample, count);
+                OnSampleReceived(this, args);
+            }
+        }
+
+        protected virtual void RaiseTransferCompleted(string message, string sessionId = null)
+        {
+            if (OnTransferCompleted != null)
+            {
+                var args = new TransferEventArgs(message, sessionId);
+                OnTransferCompleted(this, args);
+            }
+        }
+
+        protected virtual void RaiseWarning(string warningType, string message, double currentValue, double thresholdValue, string fieldName)
+        {
+            if (OnWarningRaised != null)
+            {
+                var args = new WarningEventArgs(warningType, message, currentValue, thresholdValue, fieldName);
+                OnWarningRaised(this, args);
+            }
+        }
+
+        protected virtual void RaiseLightLevelSpike(string direction, double delta, double previousValue, double currentValue, double threshold)
+        {
+            if (OnLightLevelSpike != null)
+            {
+                var args = new SpikeEventArgs("LightLevel", direction, delta, previousValue, currentValue, threshold);
+                OnLightLevelSpike(this, args);
+            }
+        }
+
+        protected virtual void RaiseRelativeHumiditySpike(string direction, double delta, double previousValue, double currentValue, double threshold)
+        {
+            if (OnRelativeHumiditySpike != null)
+            {
+                var args = new SpikeEventArgs("RelativeHumidity", direction, delta, previousValue, currentValue, threshold);
+                OnRelativeHumiditySpike(this, args);
+            }
+        }
+
+        protected virtual void RaiseAirQualitySpike(string direction, double delta, double previousValue, double currentValue, double threshold)
+        {
+            if (OnAirQualitySpike != null)
+            {
+                var args = new SpikeEventArgs("AirQuality", direction, delta, previousValue, currentValue, threshold);
+                OnAirQualitySpike(this, args);
+            }
+        }
+
+        protected virtual void RaiseOutOfBandWarning(string fieldName, string direction, double currentValue, double runningMean, double deviationPercent)
+        {
+            if (OnOutOfBandWarning != null)
+            {
+                var args = new OutOfBandEventArgs(fieldName, direction, currentValue, runningMean, deviationPercent);
+                OnOutOfBandWarning(this, args);
+            }
+        }
+
+        private void PerformAnalytics(SensorSample currentSample)
+        {
+            if (previousSample == null)
+            {
+                previousSample = currentSample;
+                UpdateRunningSums(currentSample);
+                return;
+            }
+
+            var lightThreshold = ConfigurationHelper.LightThreshold;
+            var rhThreshold = ConfigurationHelper.RelativeHumidityThreshold;
+            var aqThreshold = ConfigurationHelper.AirQualityThreshold;
+            var deviationThreshold = ConfigurationHelper.DeviationThreshold;
+
+            double deltaL = Math.Abs(currentSample.LightLevel - previousSample.LightLevel);
+            if (deltaL > lightThreshold)
+            {
+                string direction = currentSample.LightLevel > previousSample.LightLevel ? "Iznad" : "Ispod";
+                RaiseLightLevelSpike(direction, deltaL, previousSample.LightLevel, currentSample.LightLevel, lightThreshold);
+            }
+
+            double deltaRH = Math.Abs(currentSample.RelativeHumidity - previousSample.RelativeHumidity);
+            if (deltaRH > rhThreshold)
+            {
+                string direction = currentSample.RelativeHumidity > previousSample.RelativeHumidity ? "Iznad" : "Ispod";
+                RaiseRelativeHumiditySpike(direction, deltaRH, previousSample.RelativeHumidity, currentSample.RelativeHumidity, rhThreshold);
+            }
+
+            double deltaAQ = Math.Abs(currentSample.AirQuality - previousSample.AirQuality);
+            if (deltaAQ > aqThreshold)
+            {
+                string direction = currentSample.AirQuality > previousSample.AirQuality ? "Iznad" : "Ispod";
+                RaiseAirQualitySpike(direction, deltaAQ, previousSample.AirQuality, currentSample.AirQuality, aqThreshold);
+            }
+
+            UpdateRunningSums(currentSample);
+
+            if (analyticsCount > 1) 
+            {
+                double lightMean = lightLevelSum / analyticsCount;
+                double rhMean = relativeHumiditySum / analyticsCount;
+                double aqMean = airQualitySum / analyticsCount;
+
+                CheckOutOfBandWarning("LightLevel", currentSample.LightLevel, lightMean, deviationThreshold);
+                CheckOutOfBandWarning("RelativeHumidity", currentSample.RelativeHumidity, rhMean, deviationThreshold);
+                CheckOutOfBandWarning("AirQuality", currentSample.AirQuality, aqMean, deviationThreshold);
+            }
+
+            previousSample = currentSample;
+        }
+
+        private void UpdateRunningSums(SensorSample sample)
+        {
+            analyticsCount++;
+            lightLevelSum += sample.LightLevel;
+            relativeHumiditySum += sample.RelativeHumidity;
+            airQualitySum += sample.AirQuality;
+        }
+
+        private void CheckOutOfBandWarning(string fieldName, double currentValue, double runningMean, double deviationThreshold)
+        {
+            double lowerBound = runningMean * (100 - deviationThreshold) / 100; 
+            double upperBound = runningMean * (100 + deviationThreshold) / 100;  
+
+            if (currentValue < lowerBound)
+            {
+                double deviationPercent = Math.Abs((currentValue - runningMean) / runningMean) * 100;
+                RaiseOutOfBandWarning(fieldName, "Ispod", currentValue, runningMean, deviationPercent);
+            }
+            else if (currentValue > upperBound)
+            {
+                double deviationPercent = Math.Abs((currentValue - runningMean) / runningMean) * 100;
+                RaiseOutOfBandWarning(fieldName, "Iznad", currentValue, runningMean, deviationPercent);
+            }
         }
     }
 }
